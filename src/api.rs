@@ -189,3 +189,19 @@ pub struct SatInscriptions {
   pub more: bool,
   pub page: u64,
 }
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Utxo {
+  /// The referenced transaction's txid.
+  pub txid: Txid,
+  /// The index of the referenced output in its transaction's vout.
+  pub vout: u32,
+  pub value: u64,
+  /// The script which must be satisfied for the output to be spent.
+  pub script_pubkey: ScriptBuf
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Utxos {
+  pub utxos: Vec<Utxo>,
+}

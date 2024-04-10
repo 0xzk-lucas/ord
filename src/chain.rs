@@ -103,7 +103,7 @@ impl Display for Chain {
         Self::Mainnet => "mainnet",
         Self::Regtest => "regtest",
         Self::Signet => "signet",
-        Self::Testnet => "testnet",
+        Self::Testnet => "testnet3",
       }
     )
   }
@@ -117,7 +117,7 @@ impl FromStr for Chain {
       "mainnet" => Ok(Self::Mainnet),
       "regtest" => Ok(Self::Regtest),
       "signet" => Ok(Self::Signet),
-      "testnet" => Ok(Self::Testnet),
+      "testnet3" => Ok(Self::Testnet),
       _ => bail!("invalid chain `{s}`"),
     }
   }
@@ -132,7 +132,7 @@ mod tests {
     assert_eq!("mainnet".parse::<Chain>().unwrap(), Chain::Mainnet);
     assert_eq!("regtest".parse::<Chain>().unwrap(), Chain::Regtest);
     assert_eq!("signet".parse::<Chain>().unwrap(), Chain::Signet);
-    assert_eq!("testnet".parse::<Chain>().unwrap(), Chain::Testnet);
+    assert_eq!("testnet3".parse::<Chain>().unwrap(), Chain::Testnet);
     assert_eq!(
       "foo".parse::<Chain>().unwrap_err().to_string(),
       "invalid chain `foo`"

@@ -33,6 +33,11 @@ pub(crate) struct WalletCommand {
     help = "Use ord running at <SERVER_URL>. [default: http://localhost:80]"
   )]
   pub(crate) server_url: Option<Url>,
+  #[arg(
+    long,
+    help = "Wallet Address"
+  )]
+  pub(crate) address: Option<String>,
   #[command(subcommand)]
   pub(crate) subcommand: Subcommand,
 }
@@ -74,25 +79,44 @@ pub(crate) enum Subcommand {
 
 impl WalletCommand {
   pub(crate) fn run(self, settings: Settings) -> SubcommandResult {
+    eprintln!("Running wallet command: {:?}", self);
+    // log::info!("Running wallet command: {:?}", self);
     match self.subcommand {
       Subcommand::Create(create) => return create.run(self.name, &settings),
       Subcommand::Restore(restore) => return restore.run(self.name, &settings),
       _ => {}
     };
 
-    let wallet = Wallet::build(
-      self.name.clone(),
-      self.no_sync,
-      settings.clone(),
-      self
-        .server_url
-        .as_ref()
-        .map(Url::as_str)
-        .or(settings.server_url())
-        .unwrap_or("http://127.0.0.1:80")
-        .parse::<Url>()
-        .context("invalid server URL")?,
-    )?;
+    let wallet = match self.address {
+        Some(address) => Wallet::build_no_pk(
+          address,
+          self.no_sync,
+          settings.clone(),
+          self
+              .server_url
+              .as_ref()
+              .map(Url::as_str)
+              .or(settings.server_url())
+              .unwrap_or("http://127.0.0.1:80")
+              .parse::<Url>()
+              .context("invalid server URL")?,
+        )?,
+      None => Wallet::build(
+        self.name.clone(),
+        self.no_sync,
+        settings.clone(),
+        self
+            .server_url
+            .as_ref()
+            .map(Url::as_str)
+            .or(settings.server_url())
+            .unwrap_or("http://127.0.0.1:80")
+            .parse::<Url>()
+            .context("invalid server URL")?,
+      )?
+    };
+
+
 
     match self.subcommand {
       Subcommand::Balance => balance::run(wallet),
