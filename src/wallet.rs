@@ -11,6 +11,10 @@ use {
   bitcoincore_rpc::bitcoincore_rpc_json::{Descriptor, ImportDescriptors, Timestamp},
   entry::{EtchingEntry, EtchingEntryValue},
   fee_rate::FeeRate,
+  futures::{
+      future::{self, FutureExt},
+      try_join, TryFutureExt,
+  },
   index::entry::Entry,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
@@ -24,7 +28,7 @@ use {
 pub mod batch;
 pub mod entry;
 pub mod transaction_builder;
-pub mod wallet_constructor;
+// pub mod wallet_constructor;
 
 const SCHEMA_VERSION: u64 = 1;
 
@@ -1082,11 +1086,11 @@ impl Wallet {
     }
 
   pub(crate) fn clear_etching(&self, rune: &Rune) -> Result {
-    let wtx = self.database.begin_write()?;
-
-    wtx.open_table(RUNE_TO_ETCHING)?.remove(rune.0)?;
-    wtx.commit()?;
-
+    // let wtx = self.database.begin_write()?;
+    //
+    // wtx.open_table(RUNE_TO_ETCHING)?.remove(rune.0)?;
+    // wtx.commit()?;
+    //
     Ok(())
   }
 
