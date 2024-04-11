@@ -1,3 +1,4 @@
+use std::collections::btree_map::Iter;
 use bitcoin::address::NetworkChecked;
 use {
   super::*,
@@ -669,6 +670,16 @@ impl Wallet {
                 .clone(),
         )
     }
+
+    pub(crate) fn get_output_info(
+        &self,
+    ) -> Iter<OutPoint, api::Output> {
+            self.output_info.iter().take(2).map(|(&a, &b)| (a, b)).collect()
+    }
+
+    // pub(crate) fn has_sat_index(&self) -> bool {
+    //     self.has_sat_index
+    // }
 
     pub(crate) fn get_rune_balance_in_output(&self, output: &OutPoint, rune: Rune) -> Result<u128> {
         Ok(

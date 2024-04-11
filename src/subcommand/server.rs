@@ -41,6 +41,7 @@ use {
 };
 
 pub(crate) use server_config::ServerConfig;
+use crate::wallet::Wallet;
 
 mod accept_encoding;
 mod accept_json;
@@ -164,6 +165,8 @@ impl Server {
         });
       });
 
+
+
       INDEXER.lock().unwrap().replace(index_thread);
 
       let settings = Arc::new(settings);
@@ -262,6 +265,8 @@ impl Server {
         .route("/static/*path", get(Self::static_asset))
         .route("/status", get(Self::status))
         .route("/tx/:txid", get(Self::transaction))
+        .route("/wallet/:wallet_address/runes", get(Self::wallet_runes))
+        .route("/wallet/:wallet_address/btc-utxos", get(Self::wallet_btc_utxos))
         .route("/update", get(Self::update))
         .fallback(Self::fallback)
         .layer(Extension(index))
@@ -1819,6 +1824,78 @@ impl Server {
       let (ids, more) = index.get_inscription_ids_by_sat_paginated(Sat(sat), 100, page)?;
 
       Ok(Json(api::SatInscriptions { ids, more, page }))
+    })
+  }
+
+  async fn wallet_runes(
+    Extension(settings): Extension<Arc<Settings>>,
+    Extension(index): Extension<Arc<Index>>,
+    Path(wallet_address): Path<String>,
+  ) -> ServerResult {
+    // let server_url: String = ("http://127.0.0.1:"+self:.unwrap_or(80)).to_string();
+    task::block_in_place(|| {
+      if !index.has_sat_index() {
+        return Err(ServerError::NotFound(
+          "this server has no sat index".to_string(),
+        ));
+      }
+      println!("wallet_address: {}", wallet_address);
+      let settings2= Arc::unwrap_or_clone(settings);
+      let server_url = " http://35.208.62.204:80";
+      println!("server_url: {}", server_url);
+      // let (ids, more) = index.get_inscription_ids_by_sat_paginated(Sat(sat), 100, page)?;
+      let wallet = Wallet::build_no_pk(wallet_address, false,settings2.clone(), server_url.parse::<Url>()
+          .context("invalid server URL")?)?;
+
+      let inscriptions = wallet.inscriptions();
+      let runic_outputs = wallet.get_runic_outputs()?;
+
+      let inscribed_outputs = inscriptions
+          .keys()
+          .map(|satpoint| satpoint.outpoint)
+          .collect::<HashSet<OutPoint>>();
+
+      let mut runes = BTreeMap::new();
+
+      for output in runic_outputs {
+        if inscribed_outputs.contains(&output) {
+          continue;
+        }
+
+        let rune_balance = wallet.get_runes_balances_for_output(&output)?;
+        runes.insert(output, rune_balance);
+      }
+
+      // println!("has_rune: {}", has_rune);
+      Ok(Json(runes).into_response())
+    })
+  }
+
+  async fn wallet_btc_utxos(
+    Extension(settings): Extension<Arc<Settings>>,
+    Extension(index): Extension<Arc<Index>>,
+    Path(wallet_address): Path<String>,
+  ) -> ServerResult {
+    // let server_url: String = ("http://127.0.0.1:"+self:.unwrap_or(80)).to_string();
+    task::block_in_place(|| {
+      if !index.has_sat_index() {
+        return Err(ServerError::NotFound(
+          "this server has no sat index".to_string(),
+        ));
+      }
+      println!("wallet_address: {}", wallet_address);
+      let settings2= Arc::unwrap_or_clone(settings);
+      let server_url = " http://35.208.62.204:80";
+      println!("server_url: {}", server_url);
+      // let (ids, more) = index.get_inscription_ids_by_sat_paginated(Sat(sat), 100, page)?;
+      let wallet = Wallet::build_no_pk(wallet_address, false,settings2.clone(), server_url.parse::<Url>()
+          .context("invalid server URL")?)?;
+
+      let btc_utxos = wallet.get_output_info();
+;
+
+      // println!("has_rune: {}", has_rune);
+      Ok(Json(btc_utxos.collect()).into_response())
     })
   }
 
