@@ -172,6 +172,139 @@ impl Plan {
     }
   }
 
+  pub(crate) fn inscribe_psbt(
+    &self,
+    locked_utxos: &BTreeSet<OutPoint>,
+    runic_utxos: BTreeSet<OutPoint>,
+    utxos: &BTreeMap<OutPoint, TxOut>,
+    wallet: &Wallet,
+  ) -> SubcommandResult {
+    let Transactions {
+      commit_tx,
+      reveal_tx,
+      recovery_key_pair,
+      total_fees,
+      rune,
+    } = self.create_batch_transactions(
+      wallet.inscriptions().clone(),
+      wallet.chain(),
+      locked_utxos.clone(),
+      runic_utxos,
+      utxos.clone(),
+      [wallet.get_change_address()?, wallet.get_change_address()?],
+      wallet.get_change_address()?,
+    )?;
+
+    if self.dry_run {
+      let commit_psbt = wallet
+          .bitcoin_client()
+          .wallet_process_psbt(
+            &base64::engine::general_purpose::STANDARD
+                .encode(Psbt::from_unsigned_tx(Self::remove_witnesses(commit_tx.clone()))?.serialize()),
+            Some(false),
+            None,
+            None,
+          )?
+          .psbt;
+
+      let reveal_psbt = Psbt::from_unsigned_tx(Self::remove_witnesses(reveal_tx.clone()))?;
+
+      return Ok(Some(Box::new(self.output(
+        commit_tx.txid(),
+        Some(commit_psbt),
+        reveal_tx.txid(),
+        false,
+        Some(base64::engine::general_purpose::STANDARD.encode(reveal_psbt.serialize())),
+        total_fees,
+        self.inscriptions.clone(),
+        rune,
+      ))));
+    }
+
+    let signed_commit_tx = wallet
+        .bitcoin_client()
+        .sign_raw_transaction_with_wallet(&commit_tx, None, None)?
+        .hex;
+
+    let result = wallet.bitcoin_client().sign_raw_transaction_with_wallet(
+      &reveal_tx,
+      Some(
+        &commit_tx
+            .output
+            .iter()
+            .enumerate()
+            .map(|(vout, output)| SignRawTransactionInput {
+              txid: commit_tx.txid(),
+              vout: vout.try_into().unwrap(),
+              script_pub_key: output.script_pubkey.clone(),
+              redeem_script: None,
+              amount: Some(Amount::from_sat(output.value)),
+            })
+            .collect::<Vec<SignRawTransactionInput>>(),
+      ),
+      None,
+    )?;
+
+    ensure!(
+      result.complete,
+      format!("Failed to sign reveal transaction: {:?}", result.errors)
+    );
+
+    let signed_reveal_tx = result.hex;
+
+    if !self.no_backup {
+      Self::backup_recovery_key(wallet, recovery_key_pair)?;
+    }
+
+    let commit_txid = wallet
+        .bitcoin_client()
+        .send_raw_transaction(&signed_commit_tx)?;
+
+    if let Some(ref rune_info) = rune {
+      let commit = consensus::encode::deserialize::<Transaction>(&signed_commit_tx)?;
+      let reveal = consensus::encode::deserialize::<Transaction>(&signed_reveal_tx)?;
+
+      Ok(Some(Box::new(wallet.wait_for_maturation(
+        &rune_info.rune.rune,
+        commit.clone(),
+        reveal.clone(),
+        self.output(
+          commit.txid(),
+          None,
+          reveal.txid(),
+          false,
+          None,
+          total_fees,
+          self.inscriptions.clone(),
+          rune.clone(),
+        ),
+      )?)))
+    } else {
+      let reveal = match wallet
+          .bitcoin_client()
+          .send_raw_transaction(&signed_reveal_tx)
+      {
+        Ok(txid) => txid,
+        Err(err) => {
+          return Err(anyhow!(
+        "Failed to send reveal transaction: {err}\nCommit tx {commit_txid} will be recovered once mined"
+      ))
+        }
+      };
+
+      Ok(Some(Box::new(self.output(
+        commit_txid,
+        None,
+        reveal,
+        true,
+        None,
+        total_fees,
+        self.inscriptions.clone(),
+        rune,
+      ))))
+    }
+  }
+
   fn remove_witnesses(mut transaction: Transaction) -> Transaction {
     for txin in transaction.input.iter_mut() {
       txin.witness = Witness::new();

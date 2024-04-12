@@ -61,7 +61,7 @@ struct OrdClient {
 
 impl OrdClient {
     pub async fn get(&self, path: &str) -> Result<reqwest::Response> {
-        eprintln!("Running wallet command: {:?}", self.url.join(path));
+        eprintln!("Get request: {:?}", self.url.join(path));
         self
             .client
             .get(self.url.join(path)?)
@@ -674,7 +674,7 @@ impl Wallet {
     pub(crate) fn get_output_info(
         &self,
     ) -> Iter<OutPoint, api::Output> {
-            self.output_info.iter().take(2).map(|(&a, &b)| (a, b)).collect()
+            self.output_info.iter().clone()
     }
 
     // pub(crate) fn has_sat_index(&self) -> bool {

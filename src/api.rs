@@ -131,6 +131,12 @@ pub struct Output {
   pub value: u64,
 }
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct RuneTransfer {
+  pub rune_id: RuneId,
+  pub amount: u128,
+}
+
 impl Output {
   pub fn new(
     chain: Chain,

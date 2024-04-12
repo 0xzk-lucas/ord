@@ -66,6 +66,80 @@ impl Batch {
     )
   }
 
+  pub(crate) fn build_transaction(self, wallet: Wallet, batchData: String) -> Result<Transaction> {
+    let utxos = wallet.utxos();
+
+    let tempdir = TempDir::new().unwrap();
+
+    let inscription_path = tempdir.path().join("token.json");
+    fs::write(&inscription_path, "").unwrap();
+
+    let batch_path = tempdir.path().join("batch.yaml");
+    fs::write(
+      &batch_path,
+      format!(
+        "mode: separate-outputs
+etching: {}
+inscriptions:
+- file: {}
+",
+        batchData,
+        inscription_path.display(),
+      ),
+    )
+        .unwrap();
+
+    let batchfile = batch::File::load(&batch_path)?;
+
+    let parent_info = wallet.get_parent_info(batchfile.parent)?;
+
+    let (inscriptions, reveal_satpoints, postages, destinations) = batchfile.inscriptions(
+      &wallet,
+      utxos,
+      parent_info.as_ref().map(|info| info.tx_out.value),
+      self.shared.compress,
+    )?;
+
+    let mut locked_utxos = wallet.locked_utxos().clone();
+
+    locked_utxos.extend(
+      reveal_satpoints
+          .iter()
+          .map(|(satpoint, txout)| (satpoint.outpoint, txout.clone())),
+    );
+
+    if let Some(etching) = batchfile.etching {
+      Self::check_etching(&wallet, &etching)?;
+    }
+
+    batch::Plan {
+      commit_fee_rate: self.shared.commit_fee_rate.unwrap_or(self.shared.fee_rate),
+      destinations,
+      dry_run: self.shared.dry_run,
+      etching: batchfile.etching,
+      inscriptions,
+      mode: batchfile.mode,
+      no_backup: self.shared.no_backup,
+      no_limit: self.shared.no_limit,
+      parent_info,
+      postages,
+      reinscribe: batchfile.reinscribe,
+      reveal_fee_rate: self.shared.fee_rate,
+      reveal_satpoints,
+      satpoint: if let Some(sat) = batchfile.sat {
+        Some(wallet.find_sat_in_outputs(sat)?)
+      } else {
+        batchfile.satpoint
+      },
+    }
+        .inscribe(
+          &locked_utxos.into_keys().collect(),
+          wallet.get_runic_outputs()?,
+          utxos,
+          &wallet,
+        )
+  }
+
   fn check_etching(wallet: &Wallet, etching: &batch::Etching) -> Result {
     let rune = etching.rune.rune;
 
