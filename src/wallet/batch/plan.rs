@@ -1,3 +1,4 @@
+use bitcoincore_rpc::RawTx;
 use super::*;
 
 pub struct Plan {
@@ -61,6 +62,8 @@ impl Plan {
       [wallet.get_change_address()?, wallet.get_change_address()?],
       wallet.get_change_address()?,
     )?;
+
+
 
     if self.dry_run {
       let commit_psbt = wallet
@@ -194,10 +197,12 @@ impl Plan {
       [wallet.get_change_address()?, wallet.get_change_address()?],
       wallet.get_change_address()?,
     )?;
-
+    println!("commit_tx: {:?}", commit_tx.clone());
       let commit_psbt = Psbt::from_unsigned_tx(Self::remove_witnesses(commit_tx.clone()))?;
 
       let reveal_psbt = Psbt::from_unsigned_tx(Self::remove_witnesses(reveal_tx.clone()))?;
+
+    println!("commit_tx: {:?}", commit_tx.clone().raw_hex());
 
       return Ok(self.output(
         commit_tx.txid(),
