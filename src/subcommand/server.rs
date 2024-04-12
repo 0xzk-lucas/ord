@@ -262,7 +262,7 @@ impl Server {
                 .route("/runes", get(Self::runes))
                 .route("/runes/balances", get(Self::runes_balances))
                 .route("/runes/transfer", post(Self::rune_encipher))
-                .route("/runes/batch", post(Self::rune_batch))
+                // .route("/runes/batch", post(Self::rune_batch))
                 .route("/sat/:sat", get(Self::sat))
                 .route("/search", get(Self::search_by_query))
                 .route("/search/*query", get(Self::search_by_path))
@@ -1850,202 +1850,202 @@ impl Server {
         })
     }
 
-    async fn rune_batch(
-        Extension(settings): Extension<Arc<Settings>>,
-        Extension(index): Extension<Arc<Index>>,
-        _: AcceptJson,
-        Json(rune): Json<api::RuneEtching>,
-    ) -> ServerResult {
-        task::block_in_place(|| {
-            println!("rune: {:?}", rune);
-            println!("wallet_address: {}", rune.wallet);
-            let settings2 = Arc::unwrap_or_clone(settings);
-            let server_url = " http://127.0.0.1:80";
-            println!("server_url: {}", server_url);
-            // let (ids, more) = index.get_inscription_ids_by_sat_paginated(Sat(sat), 100, page)?;
-            let wallet = Wallet::build_no_pk(rune.wallet, false, settings2.clone(), server_url.parse::<Url>()
-                .context("invalid server URL")?)?;
-            let utxos = wallet.utxos();
+//     async fn rune_batch(
+//         Extension(settings): Extension<Arc<Settings>>,
+//         Extension(index): Extension<Arc<Index>>,
+//         _: AcceptJson,
+//         Json(rune): Json<api::RuneEtching>,
+//     ) -> ServerResult {
+//         task::block_in_place(|| {
+//             println!("rune: {:?}", rune);
+//             println!("wallet_address: {}", rune.wallet);
+//             let settings2 = Arc::unwrap_or_clone(settings);
+//             let server_url = " http://127.0.0.1:80";
+//             println!("server_url: {}", server_url);
+//             // let (ids, more) = index.get_inscription_ids_by_sat_paginated(Sat(sat), 100, page)?;
+//             let wallet = Wallet::build_no_pk(rune.wallet, false, settings2.clone(), server_url.parse::<Url>()
+//                 .context("invalid server URL")?)?;
+//             let utxos = wallet.utxos();
+//
+//             let tempdir = TempDir::new().unwrap();
+//
+//             let inscription_path = tempdir.path().join("token.json");
+//             fs::write(&inscription_path, "").unwrap();
+//
+//             let batch_path = tempdir.path().join("batch.yaml");
+//             fs::write(
+//                 &batch_path,
+//                 format!(
+//                     "mode: separate-outputs
+// etching:
+// {}
+// inscriptions:
+// - file: {}
+// ",
+//                     rune.batch,
+//                     inscription_path.display(),
+//                 ),
+//             )
+//                 .unwrap();
+//
+//             println!("batch_path: {:?}", batch_path);
+//
+//             let batchfile = batch::File::load(&batch_path)?;
+//
+//             let parent_info = wallet.get_parent_info(batchfile.parent)?;
+//
+//             let (inscriptions, reveal_satpoints, postages, destinations) = batchfile.inscriptions(
+//                 &wallet,
+//                 utxos,
+//                 parent_info.as_ref().map(|info| info.tx_out.value),
+//                 false,
+//             )?;
+//
+//             let mut locked_utxos = wallet.locked_utxos().clone();
+//
+//             locked_utxos.extend(
+//                 reveal_satpoints
+//                     .iter()
+//                     .map(|(satpoint, txout)| (satpoint.outpoint, txout.clone())),
+//             );
+//
+//             if let Some(etching) = batchfile.etching {
+//                 Self::check_etching(&wallet, &etching)?;
+//             }
+//
+//             let transaction = Plan{
+//                 commit_fee_rate: FeeRate::try_from(rune.fee_rate).unwrap(),
+//                 destinations,
+//                 dry_run: true,
+//                 etching: batchfile.etching,
+//                 inscriptions,
+//                 mode: batchfile.mode,
+//                 no_backup: false,
+//                 no_limit: false,
+//                 parent_info,
+//                 postages,
+//                 reinscribe: batchfile.reinscribe,
+//                 reveal_fee_rate: FeeRate::try_from(rune.fee_rate).unwrap(),
+//                 reveal_satpoints,
+//                 satpoint: if let Some(sat) = batchfile.sat {
+//                     Some(wallet.find_sat_in_outputs(sat)?)
+//                 } else {
+//                     batchfile.satpoint
+//                 },
+//             }
+//                 .inscribe_psbt(
+//                     &locked_utxos.into_keys().collect(),
+//                     wallet.get_runic_outputs()?,
+//                     utxos,
+//                     &wallet,
+//                 )?;
+//             // println!("transaction: {:?}", );
+//             Ok(Json(transaction).into_response())
+//         })
+//     }
 
-            let tempdir = TempDir::new().unwrap();
-
-            let inscription_path = tempdir.path().join("token.json");
-            fs::write(&inscription_path, "").unwrap();
-
-            let batch_path = tempdir.path().join("batch.yaml");
-            fs::write(
-                &batch_path,
-                format!(
-                    "mode: separate-outputs
-etching:
-{}
-inscriptions:
-- file: {}
-",
-                    rune.batch,
-                    inscription_path.display(),
-                ),
-            )
-                .unwrap();
-
-            println!("batch_path: {:?}", batch_path);
-
-            let batchfile = batch::File::load(&batch_path)?;
-
-            let parent_info = wallet.get_parent_info(batchfile.parent)?;
-
-            let (inscriptions, reveal_satpoints, postages, destinations) = batchfile.inscriptions(
-                &wallet,
-                utxos,
-                parent_info.as_ref().map(|info| info.tx_out.value),
-                false,
-            )?;
-
-            let mut locked_utxos = wallet.locked_utxos().clone();
-
-            locked_utxos.extend(
-                reveal_satpoints
-                    .iter()
-                    .map(|(satpoint, txout)| (satpoint.outpoint, txout.clone())),
-            );
-
-            if let Some(etching) = batchfile.etching {
-                Self::check_etching(&wallet, &etching)?;
-            }
-
-            let transaction = Plan{
-                commit_fee_rate: FeeRate::try_from(rune.fee_rate).unwrap(),
-                destinations,
-                dry_run: true,
-                etching: batchfile.etching,
-                inscriptions,
-                mode: batchfile.mode,
-                no_backup: false,
-                no_limit: false,
-                parent_info,
-                postages,
-                reinscribe: batchfile.reinscribe,
-                reveal_fee_rate: FeeRate::try_from(rune.fee_rate).unwrap(),
-                reveal_satpoints,
-                satpoint: if let Some(sat) = batchfile.sat {
-                    Some(wallet.find_sat_in_outputs(sat)?)
-                } else {
-                    batchfile.satpoint
-                },
-            }
-                .inscribe_psbt(
-                    &locked_utxos.into_keys().collect(),
-                    wallet.get_runic_outputs()?,
-                    utxos,
-                    &wallet,
-                )?;
-            // println!("transaction: {:?}", );
-            Ok(Json(transaction).into_response())
-        })
-    }
-
-    fn check_etching(wallet: &Wallet, etching: &batch::Etching) -> Result {
-        let rune = etching.rune.rune;
-
-        ensure!(
-      wallet.load_etching(rune)?.is_none(),
-      "rune `{rune}` has pending etching, resume with `ord wallet resume`"
-    );
-
-        ensure!(!rune.is_reserved(), "rune `{rune}` is reserved");
-
-        ensure!(
-      etching.divisibility <= Etching::MAX_DIVISIBILITY,
-      "<DIVISIBILITY> must be less than or equal 38"
-    );
-
-        ensure!(
-      wallet.has_rune_index(),
-      "etching runes requires index created with `--index-runes`",
-    );
-
-        ensure!(
-      wallet.get_rune(rune)?.is_none(),
-      "rune `{rune}` has already been etched",
-    );
-
-        let premine = etching.premine.to_integer(etching.divisibility)?;
-
-        let supply = etching.supply.to_integer(etching.divisibility)?;
-
-        let mintable = etching
-            .terms
-            .map(|terms| -> Result<u128> {
-                terms
-                    .cap
-                    .checked_mul(terms.amount.to_integer(etching.divisibility)?)
-                    .ok_or_else(|| anyhow!("`terms.count` * `terms.amount` over maximum"))
-            })
-            .transpose()?
-            .unwrap_or_default();
-
-        ensure!(
-      supply
-        == premine
-          .checked_add(mintable)
-          .ok_or_else(|| anyhow!("`premine` + `terms.count` * `terms.amount` over maximum"))?,
-      "`supply` not equal to `premine` + `terms.count` * `terms.amount`"
-    );
-
-        ensure!(supply > 0, "`supply` must be greater than zero");
-
-        let bitcoin_client = wallet.bitcoin_client();
-
-        let current_height = u32::try_from(bitcoin_client.get_block_count()?).unwrap();
-
-        let reveal_height = current_height + 1 + u32::from(Runestone::COMMIT_INTERVAL);
-
-        if let Some(terms) = etching.terms {
-            if let Some((start, end)) = terms.offset.and_then(|range| range.start.zip(range.end)) {
-                ensure!(
-          end > start,
-          "`terms.offset.end` must be greater than `terms.offset.start`"
-        );
-            }
-
-            if let Some((start, end)) = terms.height.and_then(|range| range.start.zip(range.end)) {
-                ensure!(
-          end > start,
-          "`terms.height.end` must be greater than `terms.height.start`"
-        );
-            }
-
-            if let Some(end) = terms.height.and_then(|range| range.end) {
-                ensure!(
-          end > reveal_height.into(),
-          "`terms.height.end` must be greater than the reveal transaction block height of {reveal_height}"
-        );
-            }
-
-            if let Some(start) = terms.height.and_then(|range| range.start) {
-                ensure!(
-            start > reveal_height.into(),
-            "`terms.height.start` must be greater than the reveal transaction block height of {reveal_height}"
-          );
-            }
-
-            ensure!(terms.cap > 0, "`terms.cap` must be greater than zero");
-
-            ensure!(
-        terms.amount.to_integer(etching.divisibility)? > 0,
-        "`terms.amount` must be greater than zero",
-      );
-        }
-
-        let minimum = Rune::minimum_at_height(wallet.chain().into(), Height(reveal_height));
-
-        ensure!(
-      rune >= minimum,
-      "rune is less than minimum for next block: {rune} < {minimum}",
-    );
-
-        Ok(())
-    }
+    // fn check_etching(wallet: &Wallet, etching: &batch::Etching) -> Result {
+    //     let rune = etching.rune.rune;
+    //
+    //     ensure!(
+    //   wallet.load_etching(rune)?.is_none(),
+    //   "rune `{rune}` has pending etching, resume with `ord wallet resume`"
+    // );
+    //
+    //     ensure!(!rune.is_reserved(), "rune `{rune}` is reserved");
+    //
+    //     ensure!(
+    //   etching.divisibility <= Etching::MAX_DIVISIBILITY,
+    //   "<DIVISIBILITY> must be less than or equal 38"
+    // );
+    //
+    //     ensure!(
+    //   wallet.has_rune_index(),
+    //   "etching runes requires index created with `--index-runes`",
+    // );
+    //
+    //     ensure!(
+    //   wallet.get_rune(rune)?.is_none(),
+    //   "rune `{rune}` has already been etched",
+    // );
+    //
+    //     let premine = etching.premine.to_integer(etching.divisibility)?;
+    //
+    //     let supply = etching.supply.to_integer(etching.divisibility)?;
+    //
+    //     let mintable = etching
+    //         .terms
+    //         .map(|terms| -> Result<u128> {
+    //             terms
+    //                 .cap
+    //                 .checked_mul(terms.amount.to_integer(etching.divisibility)?)
+    //                 .ok_or_else(|| anyhow!("`terms.count` * `terms.amount` over maximum"))
+    //         })
+    //         .transpose()?
+    //         .unwrap_or_default();
+    //
+    //     ensure!(
+    //   supply
+    //     == premine
+    //       .checked_add(mintable)
+    //       .ok_or_else(|| anyhow!("`premine` + `terms.count` * `terms.amount` over maximum"))?,
+    //   "`supply` not equal to `premine` + `terms.count` * `terms.amount`"
+    // );
+    //
+    //     ensure!(supply > 0, "`supply` must be greater than zero");
+    //
+    //     let bitcoin_client = wallet.bitcoin_client();
+    //
+    //     let current_height = u32::try_from(bitcoin_client.get_block_count()?).unwrap();
+    //
+    //     let reveal_height = current_height + 1 + u32::from(Runestone::COMMIT_INTERVAL);
+    //
+    //     if let Some(terms) = etching.terms {
+    //         if let Some((start, end)) = terms.offset.and_then(|range| range.start.zip(range.end)) {
+    //             ensure!(
+    //       end > start,
+    //       "`terms.offset.end` must be greater than `terms.offset.start`"
+    //     );
+    //         }
+    //
+    //         if let Some((start, end)) = terms.height.and_then(|range| range.start.zip(range.end)) {
+    //             ensure!(
+    //       end > start,
+    //       "`terms.height.end` must be greater than `terms.height.start`"
+    //     );
+    //         }
+    //
+    //         if let Some(end) = terms.height.and_then(|range| range.end) {
+    //             ensure!(
+    //       end > reveal_height.into(),
+    //       "`terms.height.end` must be greater than the reveal transaction block height of {reveal_height}"
+    //     );
+    //         }
+    //
+    //         if let Some(start) = terms.height.and_then(|range| range.start) {
+    //             ensure!(
+    //         start > reveal_height.into(),
+    //         "`terms.height.start` must be greater than the reveal transaction block height of {reveal_height}"
+    //       );
+    //         }
+    //
+    //         ensure!(terms.cap > 0, "`terms.cap` must be greater than zero");
+    //
+    //         ensure!(
+    //     terms.amount.to_integer(etching.divisibility)? > 0,
+    //     "`terms.amount` must be greater than zero",
+    //   );
+    //     }
+    //
+    //     let minimum = Rune::minimum_at_height(wallet.chain().into(), Height(reveal_height));
+    //
+    //     ensure!(
+    //   rune >= minimum,
+    //   "rune is less than minimum for next block: {rune} < {minimum}",
+    // );
+    //
+    //     Ok(())
+    // }
 
     async fn wallet_runes(
         Extension(settings): Extension<Arc<Settings>>,
