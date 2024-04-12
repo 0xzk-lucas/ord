@@ -1,3 +1,4 @@
+use clap::builder::Str;
 use {
   super::*,
   serde_hex::{SerHex, Strict},
@@ -135,6 +136,22 @@ pub struct Output {
 pub struct RuneTransfer {
   pub rune_id: RuneId,
   pub amount: u128,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct RuneEtching {
+  pub batch: String,
+  pub wallet: String,
+  pub fee_rate: f64,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct RuneEtchingPsbt {
+  pub commit_psbt: String,
+  pub reveal_psbt: String,
+  pub inscriptions: String,
+  pub rune: String,
+  pub fee_rate: f64,
 }
 
 impl Output {

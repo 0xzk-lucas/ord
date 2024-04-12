@@ -145,15 +145,15 @@ impl TransactionBuilder {
   }
 
   pub fn build_transaction(self) -> Result<Transaction> {
-    if self.change_addresses.len() < 2 {
-      return Err(Error::DuplicateAddress(
-        self.change_addresses.first().unwrap().clone(),
-      ));
-    }
-
-    if self.change_addresses.contains(&self.recipient) {
-      return Err(Error::DuplicateAddress(self.recipient));
-    }
+    // if self.change_addresses.len() < 2 {
+    //   return Err(Error::DuplicateAddress(
+    //     self.change_addresses.first().unwrap().clone(),
+    //   ));
+    // }
+    //
+    // if self.change_addresses.contains(&self.recipient) {
+    //   return Err(Error::DuplicateAddress(self.recipient));
+    // }
 
     match self.target {
       Target::Value(output_value) | Target::ExactPostage(output_value) => {
