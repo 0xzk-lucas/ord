@@ -471,14 +471,14 @@ impl Server {
 
         let acceptor = state.axum_acceptor(Arc::new(server_config));
 
-        tokio::spawn(async move {
-            while let Some(result) = state.next().await {
-                match result {
-                    Ok(ok) => log::info!("ACME event: {:?}", ok),
-                    Err(err) => log::error!("ACME error: {:?}", err),
-                }
-            }
-        });
+    tokio::spawn(async move {
+      while let Some(result) = state.next().await {
+        match result {
+          Ok(ok) => log::info!("ACME event: {:?}", ok),
+          Err(err) => log::error!("ACME error: {:?}", err),
+        }
+      }
+    });
 
         Ok(acceptor)
     }
@@ -2390,7 +2390,7 @@ mod tests {
                 ..default()
             });
 
-            self.mine_blocks(Runestone::COMMIT_INTERVAL.into());
+      self.mine_blocks((Runestone::COMMIT_CONFIRMATIONS - 1).into());
 
             let witness = witness.unwrap_or_else(|| {
                 let tapscript = script::Builder::new()
@@ -2847,8 +2847,8 @@ mod tests {
 
         server.mine_blocks(1);
 
-        server.assert_redirect("/search/9:1", "/rune/AAAAAAAAAAAAA");
-        server.assert_redirect("/search?query=9:1", "/rune/AAAAAAAAAAAAA");
+    server.assert_redirect("/search/8:1", "/rune/AAAAAAAAAAAAA");
+    server.assert_redirect("/search?query=8:1", "/rune/AAAAAAAAAAAAA");
 
         server.assert_response_regex(
             "/search/100000000000000000000:200000000000000000",
@@ -2927,12 +2927,12 @@ mod tests {
 
         server.mine_blocks(1);
 
-        server.assert_response_regex(
-            "/rune/9:1",
-            StatusCode::OK,
-            ".*<title>Rune AAAAAAAAAAAAA</title>.*",
-        );
-    }
+    server.assert_response_regex(
+      "/rune/8:1",
+      StatusCode::OK,
+      ".*<title>Rune AAAAAAAAAAAAA</title>.*",
+    );
+  }
 
     #[test]
     fn runes_are_displayed_on_runes_page() {
@@ -3016,48 +3016,50 @@ mod tests {
 
         server.assert_response_regex(format!("/rune/{rune}"), StatusCode::NOT_FOUND, ".*");
 
-        let (txid, id) = server.etch(
-            Runestone {
-                edicts: vec![Edict {
-                    id: RuneId::default(),
-                    amount: u128::MAX,
-                    output: 0,
-                }],
-                etching: Some(Etching {
-                    rune: Some(rune),
-                    symbol: Some('%'),
-                    premine: Some(u128::MAX),
-                    ..default()
-                }),
-                ..default()
-            },
-            1,
-            Some(
-                Inscription {
-                    content_type: Some("text/plain".into()),
-                    body: Some("hello".into()),
-                    rune: Some(rune.commitment()),
-                    ..default()
-                }
-                    .to_witness(),
-            ),
-        );
+    let (txid, id) = server.etch(
+      Runestone {
+        edicts: vec![Edict {
+          id: RuneId::default(),
+          amount: u128::MAX,
+          output: 0,
+        }],
+        etching: Some(Etching {
+          rune: Some(rune),
+          symbol: Some('%'),
+          premine: Some(u128::MAX),
+          turbo: true,
+          ..default()
+        }),
+        ..default()
+      },
+      1,
+      Some(
+        Inscription {
+          content_type: Some("text/plain".into()),
+          body: Some("hello".into()),
+          rune: Some(rune.commitment()),
+          ..default()
+        }
+        .to_witness(),
+      ),
+    );
 
-        assert_eq!(
-            server.index.runes().unwrap(),
-            [(
-                id,
-                RuneEntry {
-                    block: id.block,
-                    etching: txid,
-                    spaced_rune: SpacedRune { rune, spacers: 0 },
-                    premine: u128::MAX,
-                    symbol: Some('%'),
-                    timestamp: id.block,
-                    ..default()
-                }
-            )]
-        );
+    assert_eq!(
+      server.index.runes().unwrap(),
+      [(
+        id,
+        RuneEntry {
+          block: id.block,
+          etching: txid,
+          spaced_rune: SpacedRune { rune, spacers: 0 },
+          premine: u128::MAX,
+          symbol: Some('%'),
+          timestamp: id.block,
+          turbo: true,
+          ..default()
+        }
+      )]
+    );
 
         assert_eq!(
             server.index.get_rune_balances().unwrap(),
@@ -3075,11 +3077,11 @@ mod tests {
   <dt>number</dt>
   <dd>0</dd>
   <dt>timestamp</dt>
-  <dd><time>1970-01-01 00:00:09 UTC</time></dd>
+  <dd><time>1970-01-01 00:00:08 UTC</time></dd>
   <dt>id</dt>
-  <dd>9:1</dd>
+  <dd>8:1</dd>
   <dt>etching block</dt>
-  <dd><a href=/block/9>9</a></dd>
+  <dd><a href=/block/8>8</a></dd>
   <dt>etching transaction</dt>
   <dd>1</dd>
   <dt>mint</dt>
@@ -3094,6 +3096,8 @@ mod tests {
   <dd>0</dd>
   <dt>symbol</dt>
   <dd>%</dd>
+  <dt>turbo</dt>
+  <dd>true</dd>
   <dt>etching</dt>
   <dd><a class=monospace href=/tx/{txid}>{txid}</a></dd>
   <dt>parent</dt>
@@ -3433,15 +3437,20 @@ mod tests {
             ..default()
         });
 
-        server.core.broadcast_tx(TransactionTemplate {
-            inputs: &[(
-                3,
-                0,
-                0,
-                Inscription::new(None, Some("hello".as_bytes().into())).to_witness(),
-            )],
-            ..default()
-        });
+    server.core.broadcast_tx(TransactionTemplate {
+      inputs: &[(
+        3,
+        0,
+        0,
+        Inscription {
+          content_type: None,
+          body: Some("hello".as_bytes().into()),
+          ..default()
+        }
+        .to_witness(),
+      )],
+      ..default()
+    });
 
         server.mine_blocks(1);
 
@@ -4283,42 +4292,54 @@ mod tests {
     );
     }
 
-    #[test]
-    fn content_response_no_content() {
-        assert_eq!(
-            Server::content_response(
-                Inscription::new(Some("text/plain".as_bytes().to_vec()), None),
-                AcceptEncoding::default(),
-                &ServerConfig::default(),
-            )
-                .unwrap(),
-            None
-        );
-    }
+  #[test]
+  fn content_response_no_content() {
+    assert_eq!(
+      Server::content_response(
+        Inscription {
+          content_type: Some("text/plain".as_bytes().to_vec()),
+          body: None,
+          ..default()
+        },
+        AcceptEncoding::default(),
+        &ServerConfig::default(),
+      )
+      .unwrap(),
+      None
+    );
+  }
 
-    #[test]
-    fn content_response_with_content() {
-        let (headers, body) = Server::content_response(
-            Inscription::new(Some("text/plain".as_bytes().to_vec()), Some(vec![1, 2, 3])),
-            AcceptEncoding::default(),
-            &ServerConfig::default(),
-        )
-            .unwrap()
-            .unwrap();
+  #[test]
+  fn content_response_with_content() {
+    let (headers, body) = Server::content_response(
+      Inscription {
+        content_type: Some("text/plain".as_bytes().to_vec()),
+        body: Some(vec![1, 2, 3]),
+        ..default()
+      },
+      AcceptEncoding::default(),
+      &ServerConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
 
         assert_eq!(headers["content-type"], "text/plain");
         assert_eq!(body, vec![1, 2, 3]);
     }
 
-    #[test]
-    fn content_security_policy_no_origin() {
-        let (headers, _) = Server::content_response(
-            Inscription::new(Some("text/plain".as_bytes().to_vec()), Some(vec![1, 2, 3])),
-            AcceptEncoding::default(),
-            &ServerConfig::default(),
-        )
-            .unwrap()
-            .unwrap();
+  #[test]
+  fn content_security_policy_no_origin() {
+    let (headers, _) = Server::content_response(
+      Inscription {
+        content_type: Some("text/plain".as_bytes().to_vec()),
+        body: Some(vec![1, 2, 3]),
+        ..default()
+      },
+      AcceptEncoding::default(),
+      &ServerConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
 
         assert_eq!(
             headers["content-security-policy"],
@@ -4326,18 +4347,22 @@ mod tests {
         );
     }
 
-    #[test]
-    fn content_security_policy_with_origin() {
-        let (headers, _) = Server::content_response(
-            Inscription::new(Some("text/plain".as_bytes().to_vec()), Some(vec![1, 2, 3])),
-            AcceptEncoding::default(),
-            &ServerConfig {
-                csp_origin: Some("https://ordinals.com".into()),
-                ..default()
-            },
-        )
-            .unwrap()
-            .unwrap();
+  #[test]
+  fn content_security_policy_with_origin() {
+    let (headers, _) = Server::content_response(
+      Inscription {
+        content_type: Some("text/plain".as_bytes().to_vec()),
+        body: Some(vec![1, 2, 3]),
+        ..default()
+      },
+      AcceptEncoding::default(),
+      &ServerConfig {
+        csp_origin: Some("https://ordinals.com".into()),
+        ..default()
+      },
+    )
+    .unwrap()
+    .unwrap();
 
         assert_eq!(headers["content-security-policy"], HeaderValue::from_static("default-src https://ordinals.com/content/ https://ordinals.com/blockheight https://ordinals.com/blockhash https://ordinals.com/blockhash/ https://ordinals.com/blocktime https://ordinals.com/r/ 'unsafe-eval' 'unsafe-inline' data: blob:"));
     }
@@ -4417,29 +4442,37 @@ mod tests {
         );
     }
 
-    #[test]
-    fn content_response_no_content_type() {
-        let (headers, body) = Server::content_response(
-            Inscription::new(None, Some(Vec::new())),
-            AcceptEncoding::default(),
-            &ServerConfig::default(),
-        )
-            .unwrap()
-            .unwrap();
+  #[test]
+  fn content_response_no_content_type() {
+    let (headers, body) = Server::content_response(
+      Inscription {
+        content_type: None,
+        body: Some(Vec::new()),
+        ..default()
+      },
+      AcceptEncoding::default(),
+      &ServerConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
 
         assert_eq!(headers["content-type"], "application/octet-stream");
         assert!(body.is_empty());
     }
 
-    #[test]
-    fn content_response_bad_content_type() {
-        let (headers, body) = Server::content_response(
-            Inscription::new(Some("\n".as_bytes().to_vec()), Some(Vec::new())),
-            AcceptEncoding::default(),
-            &ServerConfig::default(),
-        )
-            .unwrap()
-            .unwrap();
+  #[test]
+  fn content_response_bad_content_type() {
+    let (headers, body) = Server::content_response(
+      Inscription {
+        content_type: Some("\n".as_bytes().to_vec()),
+        body: Some(Vec::new()),
+        ..Default::default()
+      },
+      AcceptEncoding::default(),
+      &ServerConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
 
         assert_eq!(headers["content-type"], "application/octet-stream");
         assert!(body.is_empty());
@@ -4779,15 +4812,20 @@ mod tests {
             .build();
         server.mine_blocks(1);
 
-        let txid = server.core.broadcast_tx(TransactionTemplate {
-            inputs: &[(
-                1,
-                0,
-                0,
-                Inscription::new(Some("foo/bar".as_bytes().to_vec()), None).to_witness(),
-            )],
-            ..default()
-        });
+    let txid = server.core.broadcast_tx(TransactionTemplate {
+      inputs: &[(
+        1,
+        0,
+        0,
+        Inscription {
+          content_type: Some("foo/bar".as_bytes().to_vec()),
+          body: None,
+          ..default()
+        }
+        .to_witness(),
+      )],
+      ..default()
+    });
 
         let inscription_id = InscriptionId { txid, index: 0 };
 
@@ -4808,15 +4846,20 @@ mod tests {
             .build();
         server.mine_blocks(1);
 
-        let txid = server.core.broadcast_tx(TransactionTemplate {
-            inputs: &[(
-                1,
-                0,
-                0,
-                Inscription::new(Some("image/png".as_bytes().to_vec()), None).to_witness(),
-            )],
-            ..default()
-        });
+    let txid = server.core.broadcast_tx(TransactionTemplate {
+      inputs: &[(
+        1,
+        0,
+        0,
+        Inscription {
+          content_type: Some("image/png".as_bytes().to_vec()),
+          body: None,
+          ..default()
+        }
+        .to_witness(),
+      )],
+      ..default()
+    });
 
         let inscription_id = InscriptionId { txid, index: 0 };
 
