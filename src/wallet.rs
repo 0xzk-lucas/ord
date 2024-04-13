@@ -304,7 +304,7 @@ impl Wallet {
                 }
 
                 println!("321321");
-                let mut utxos = Self::get_utxos_with_address(&async_unisat_client, address).await?;
+                let mut utxos = Self::get_utxos_with_address(&bitcoin_client, wallet_address.clone()).await?;
                 let locked_utxos = BTreeMap::new();
                 // Self::get_locked_utxos(&bitcoin_client)?;
                 // utxos.extend(locked_utxos.clone());
@@ -410,25 +410,42 @@ impl Wallet {
         )
     }
 
-    async fn get_utxos_with_address(unisat_client: &OrdClient, address: String) -> Result<BTreeMap<OutPoint, TxOut>> {
-        let response = unisat_client.get(&format!("/utxo/{address}")).await?;
+    async fn get_utxos_with_address(bitcoin_client: &Client, address: Address) -> Result<BTreeMap<OutPoint, TxOut>> {
+        // let response = unisat_client.get(&format!("/utxo/{address}")).await?;
+        //
+        // if !response.status().is_success() {
+        //     bail!("wallet failed get otxo: {}", response.text().await?);
+        // }
+        //
+        //
+        // let utxos: api::Utxos = serde_json::from_str(&response.text().await?)?;
+        //
+        // Ok(utxos.utxos.into_iter().map(|utxo| {
+        //     let outpoint = OutPoint::new(utxo.txid, utxo.vout);
+        //     let txout = TxOut {
+        //         script_pubkey: utxo.script_pubkey,
+        //         value: utxo.value,
+        //     };
+        //
+        //     (outpoint, txout)
+        // }).collect())
 
-        if !response.status().is_success() {
-            bail!("wallet failed get otxo: {}", response.text().await?);
-        }
+        Ok(
+            bitcoin_client
+                .list_unspent(None, None, Some(&[&address]), None, None)?
+                .into_iter()
+                .map(|utxo| {
+                    let outpoint = OutPoint::new(utxo.txid, utxo.vout);
+                    let txout = TxOut {
+                        script_pubkey: utxo.script_pub_key,
+                        value: utxo.amount.to_sat(),
+                    };
 
+                    (outpoint, txout)
+                })
+                .collect(),
+        )
 
-        let utxos: api::Utxos = serde_json::from_str(&response.text().await?)?;
-
-        Ok(utxos.utxos.into_iter().map(|utxo| {
-            let outpoint = OutPoint::new(utxo.txid, utxo.vout);
-            let txout = TxOut {
-                script_pubkey: utxo.script_pubkey,
-                value: utxo.value,
-            };
-
-            (outpoint, txout)
-        }).collect())
         // println!("output_json: {:?}", output_json);
         // if !output_json.indexed {
         //     bail!("output in wallet but not in ord server: {output}");
