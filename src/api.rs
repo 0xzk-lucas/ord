@@ -137,8 +137,8 @@ pub struct Output {
 pub struct RuneTransfer {
   pub rune_id: RuneId,
   pub amount: u128,
+  pub output: u32,
 }
-
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct RuneEtching {
   pub batch: String,

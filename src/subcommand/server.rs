@@ -1834,16 +1834,20 @@ impl Server {
     async fn rune_encipher(
         Extension(index): Extension<Arc<Index>>,
         _: AcceptJson,
-        Json(rune): Json<api::RuneTransfer>,
+        Json(runes): Json<Vec<api::RuneTransfer>>,
     ) -> ServerResult {
         task::block_in_place(|| {
-            println!("rune: {:?}", rune);
-            let runestone = Runestone {
-                edicts: vec![Edict {
+            println!("rune: {:?}", runes);
+            let edicts = runes
+                .into_iter()
+                .map(|rune| Edict {
                     amount: rune.amount,
                     id: rune.rune_id,
-                    output: 2,
-                }],
+                    output: rune.output,
+                })
+                .collect();
+            let runestone = Runestone {
+                edicts,
                 ..default()
             };
             Ok(Json(runestone.encipher()).into_response())
@@ -2082,7 +2086,7 @@ impl Server {
                     continue;
                 }
 
-                let rune_balance = wallet.get_runes_balances_for_output(&output)?;
+                let rune_balance = wallet.get_runes_balances_for_output2(&output)?;
                 runes.insert(output, rune_balance);
             }
 
