@@ -325,7 +325,9 @@ impl Wallet {
                 let mut output_info = BTreeMap::new();
                 for (output, result) in results {
                     let info = result?;
-                    output_info.insert(output, info);
+                    if info.indexed {
+                        output_info.insert(output, info);
+                    }
                 }
 
                 let requests = output_info
@@ -385,9 +387,9 @@ impl Wallet {
 
         let output_json: api::Output = serde_json::from_str(&response.text().await?)?;
 
-        if !output_json.indexed {
-            bail!("output in wallet but not in ord server: {output}");
-        }
+        //  if !output_json.indexed {
+        //     bail!("output in wallet but not in ord server: {output}");
+        // }
 
         Ok(output_json)
     }
