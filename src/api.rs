@@ -130,6 +130,7 @@ pub struct Output {
   pub spent: bool,
   pub transaction: String,
   pub value: u64,
+  pub script_pubkey_hex: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -175,6 +176,7 @@ impl Output {
       runes,
       sat_ranges,
       script_pubkey: tx_out.script_pubkey.to_asm_string(),
+      script_pubkey_hex: Some(tx_out.script_pubkey.to_hex_string()),
       spent,
       transaction: outpoint.txid.to_string(),
       value: tx_out.value,
