@@ -1,3 +1,4 @@
+use clap::builder::Str;
 use {
   super::*,
   serde_hex::{SerHex, Strict},
@@ -129,6 +130,29 @@ pub struct Output {
   pub spent: bool,
   pub transaction: String,
   pub value: u64,
+  pub script_pubkey_hex: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct RuneTransfer {
+  pub rune_id: RuneId,
+  pub amount: u128,
+  pub output: u32,
+}
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct RuneEtching {
+  pub batch: String,
+  pub wallet: String,
+  pub fee_rate: f64,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct RuneEtchingPsbt {
+  pub commit_psbt: String,
+  pub reveal_psbt: String,
+  pub inscriptions: String,
+  pub rune: String,
+  pub fee_rate: f64,
 }
 
 impl Output {
@@ -152,6 +176,7 @@ impl Output {
       runes,
       sat_ranges,
       script_pubkey: tx_out.script_pubkey.to_asm_string(),
+      script_pubkey_hex: Some(tx_out.script_pubkey.to_hex_string()),
       spent,
       transaction: outpoint.txid.to_string(),
       value: tx_out.value,
@@ -188,4 +213,20 @@ pub struct SatInscriptions {
   pub ids: Vec<InscriptionId>,
   pub more: bool,
   pub page: u64,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Utxo {
+  /// The referenced transaction's txid.
+  pub txid: Txid,
+  /// The index of the referenced output in its transaction's vout.
+  pub vout: u32,
+  pub value: u64,
+  /// The script which must be satisfied for the output to be spent.
+  pub script_pubkey: ScriptBuf
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Utxos {
+  pub utxos: Vec<Utxo>,
 }

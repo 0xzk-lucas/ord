@@ -1,3 +1,4 @@
+use bitcoincore_rpc::RawTx;
 use {super::*, crate::outgoing::Outgoing, base64::Engine, bitcoin::psbt::Psbt};
 
 #[derive(Debug, Parser)]
@@ -300,17 +301,19 @@ impl Send {
         },
       ],
     };
+    println!("unfunded_transaction: {:?}", unfunded_transaction.raw_hex());
+    // let unsigned_transaction =
+    //   fund_raw_transaction(bitcoin_client, fee_rate, &unfunded_transaction)?;
 
-    let unsigned_transaction =
-      fund_raw_transaction(bitcoin_client, fee_rate, &unfunded_transaction)?;
+    // ;
 
-    let unsigned_transaction = consensus::encode::deserialize(&unsigned_transaction)?;
+    // let unsigned_transaction = consensus::encode::deserialize(&unsigned_transaction)?;
 
     assert_eq!(
-      Runestone::decipher(&unsigned_transaction),
+      Runestone::decipher(&unfunded_transaction),
       Some(Artifact::Runestone(runestone)),
     );
 
-    Ok(unsigned_transaction)
+    Ok(unfunded_transaction)
   }
 }

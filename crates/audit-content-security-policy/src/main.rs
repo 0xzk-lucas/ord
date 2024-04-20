@@ -22,12 +22,12 @@ const SERVERS: &[(&str, &str, &str)] = &[
     "https://signet.ordinals.com/content/",
   ),
   (
-    "testnet.ordinals.net",
+    "testnet3.ordinals.net",
     "/content/0a1b4e4acf89686e4d012561014041bffd57a62254486f24cb5b0a216c04f102i0",
     "https://testnet.ordinals.com/content/",
   ),
   (
-    "testnet.ordinals.com",
+    "testnet3.ordinals.com",
     "/content/0a1b4e4acf89686e4d012561014041bffd57a62254486f24cb5b0a216c04f102i0",
     "https://testnet.ordinals.com/content/",
   ),

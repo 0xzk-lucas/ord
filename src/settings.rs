@@ -406,7 +406,7 @@ impl Settings {
         cookie_file.display()
       );
     }
-
+    eprintln!("Running wallet command: {:?}", rpc_url);
     let client = Client::new(&rpc_url, bitcoin_credentials)
       .with_context(|| format!("failed to connect to Bitcoin Core RPC at `{rpc_url}`"))?;
 
@@ -660,7 +660,7 @@ mod tests {
 
     assert_eq!(
       settings.bitcoin_rpc_client(None).unwrap_err().to_string(),
-      "Bitcoin RPC server is on testnet but ord is on mainnet"
+      "Bitcoin RPC server is on testnet3 but ord is on mainnet"
     );
   }
 
@@ -827,7 +827,7 @@ mod tests {
       },
     );
     check_network_alias(
-      "testnet",
+      "testnet3",
       if cfg!(windows) {
         r"ord\testnet3"
       } else {
@@ -848,9 +848,9 @@ mod tests {
     assert_eq!(parse(&["--regtest"]).chain(), Chain::Regtest);
     assert_eq!(parse(&["-r"]).chain(), Chain::Regtest);
 
-    Arguments::try_parse_from(["ord", "--testnet", "--chain", "signet", "index", "update"])
+    Arguments::try_parse_from(["ord", "--testnet3", "--chain", "signet", "index", "update"])
       .unwrap_err();
-    assert_eq!(parse(&["--testnet"]).chain(), Chain::Testnet);
+    assert_eq!(parse(&["--testnet3"]).chain(), Chain::Testnet);
     assert_eq!(parse(&["-t"]).chain(), Chain::Testnet);
   }
 

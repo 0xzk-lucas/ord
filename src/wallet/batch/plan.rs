@@ -172,6 +172,45 @@ impl Plan {
     }
   }
 
+  pub(crate) fn inscribe_psbt(
+    &self,
+    locked_utxos: &BTreeSet<OutPoint>,
+    runic_utxos: BTreeSet<OutPoint>,
+    utxos: &BTreeMap<OutPoint, TxOut>,
+    wallet: &Wallet,
+  ) -> Result<Output> {
+    let Transactions {
+      commit_tx,
+      reveal_tx,
+      recovery_key_pair,
+      total_fees,
+      rune,
+    } = self.create_batch_transactions(
+      wallet.inscriptions().clone(),
+      wallet.chain(),
+      locked_utxos.clone(),
+      runic_utxos,
+      utxos.clone(),
+      [wallet.get_change_address()?, wallet.get_change_address()?],
+      wallet.get_change_address()?,
+    )?;
+
+      let commit_psbt = Psbt::from_unsigned_tx(Self::remove_witnesses(commit_tx.clone()))?;
+
+      let reveal_psbt = Psbt::from_unsigned_tx(Self::remove_witnesses(reveal_tx.clone()))?;
+
+      return Ok(self.output(
+        commit_tx.txid(),
+        Some(base64::engine::general_purpose::STANDARD.encode(commit_psbt.serialize())),
+        reveal_tx.txid(),
+        false,
+        Some(base64::engine::general_purpose::STANDARD.encode(reveal_psbt.serialize())),
+        total_fees,
+        self.inscriptions.clone(),
+        rune,
+      ));
+  }
+
   fn remove_witnesses(mut transaction: Transaction) -> Transaction {
     for txin in transaction.input.iter_mut() {
       txin.witness = Witness::new();
