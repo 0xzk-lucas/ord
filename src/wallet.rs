@@ -142,23 +142,23 @@ impl Wallet {
 
                 let chain_block_count = bitcoin_client.get_block_count().unwrap() + 1;
 
-                if !no_sync {
-                    for i in 0.. {
-                        let response = async_ord_client.get("/blockcount").await?;
-                        if response
-                            .text()
-                            .await?
-                            .parse::<u64>()
-                            .expect("wallet failed to talk to server. Make sure `ord server` is running.")
-                            >= chain_block_count
-                        {
-                            break;
-                        } else if i == 20 {
-                            bail!("wallet failed to synchronize with `ord server` after {i} attempts");
-                        }
-                        tokio::time::sleep(Duration::from_millis(50)).await;
-                    }
-                }
+                // if !no_sync {
+                //     for i in 0.. {
+                //         let response = async_ord_client.get("/blockcount").await?;
+                //         if response
+                //             .text()
+                //             .await?
+                //             .parse::<u64>()
+                //             .expect("wallet failed to talk to server. Make sure `ord server` is running.")
+                //             >= chain_block_count
+                //         {
+                //             break;
+                //         } else if i == 20 {
+                //             bail!("wallet failed to synchronize with `ord server` after {i} attempts");
+                //         }
+                //         tokio::time::sleep(Duration::from_millis(50)).await;
+                //     }
+                // }
 
                 let mut utxos = Self::get_utxos(&bitcoin_client)?;
                 let locked_utxos = Self::get_locked_utxos(&bitcoin_client)?;
@@ -285,23 +285,23 @@ impl Wallet {
 
                 let chain_block_count = bitcoin_client.get_block_count().unwrap() + 1;
 
-                if !no_sync {
-                    for i in 0.. {
-                        let response = async_ord_client.get("/blockcount").await?;
-                        if response
-                            .text()
-                            .await?
-                            .parse::<u64>()
-                            .expect("wallet failed to talk to server. Make sure `ord server` is running.")
-                            >= chain_block_count
-                        {
-                            break;
-                        } else if i == 20 {
-                            bail!("wallet failed to synchronize with `ord server` after {i} attempts");
-                        }
-                        tokio::time::sleep(Duration::from_millis(50)).await;
-                    }
-                }
+                // if !no_sync {
+                //     for i in 0.. {
+                //         let response = async_ord_client.get("/blockcount").await?;
+                //         if response
+                //             .text()
+                //             .await?
+                //             .parse::<u64>()
+                //             .expect("wallet failed to talk to server. Make sure `ord server` is running.")
+                //             >= chain_block_count
+                //         {
+                //             break;
+                //         } else if i == 20 {
+                //             bail!("wallet failed to synchronize with `ord server` after {i} attempts");
+                //         }
+                //         tokio::time::sleep(Duration::from_millis(50)).await;
+                //     }
+                // }
 
                 println!("321321");
                 let mut utxos = Self::get_utxos_with_address(&async_unisat_client, address).await?;
