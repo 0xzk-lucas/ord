@@ -1,29 +1,29 @@
 use std::collections::btree_map::Iter;
 use bitcoin::address::NetworkChecked;
 use {
-  super::*,
-  base64::{self, Engine},
-  batch::ParentInfo,
-  bitcoin::secp256k1::{All, Secp256k1},
-  bitcoin::{
-    bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, Fingerprint},
-    psbt::Psbt,
-  },
-  bitcoincore_rpc::bitcoincore_rpc_json::{Descriptor, ImportDescriptors, Timestamp},
-  entry::{EtchingEntry, EtchingEntryValue},
-  fee_rate::FeeRate,
-  futures::{
-      future::{self, FutureExt},
-      try_join, TryFutureExt,
-  },
-  index::entry::Entry,
-  indicatif::{ProgressBar, ProgressStyle},
-  log::log_enabled,
-  miniscript::descriptor::{DescriptorSecretKey, DescriptorXKey, Wildcard},
-  redb::{Database, DatabaseError, ReadableTable, RepairSession, StorageError, TableDefinition},
-  reqwest::header,
-  std::sync::Once,
-  transaction_builder::TransactionBuilder,
+    super::*,
+    base64::{self, Engine},
+    batch::ParentInfo,
+    bitcoin::secp256k1::{All, Secp256k1},
+    bitcoin::{
+        bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, Fingerprint},
+        psbt::Psbt,
+    },
+    bitcoincore_rpc::bitcoincore_rpc_json::{Descriptor, ImportDescriptors, Timestamp},
+    entry::{EtchingEntry, EtchingEntryValue},
+    fee_rate::FeeRate,
+    futures::{
+        future::{self, FutureExt},
+        try_join, TryFutureExt,
+    },
+    index::entry::Entry,
+    indicatif::{ProgressBar, ProgressStyle},
+    log::log_enabled,
+    miniscript::descriptor::{DescriptorSecretKey, DescriptorXKey, Wildcard},
+    redb::{Database, DatabaseError, ReadableTable, RepairSession, StorageError, TableDefinition},
+    reqwest::header,
+    std::sync::Once,
+    transaction_builder::TransactionBuilder,
 };
 
 pub mod batch;
@@ -226,7 +226,7 @@ impl Wallet {
                     rpc_url,
                     settings,
                     utxos,
-                    address: None
+                    address: None,
                 })
             })
     }
@@ -325,7 +325,9 @@ impl Wallet {
                 let mut output_info = BTreeMap::new();
                 for (output, result) in results {
                     let info = result?;
-                    output_info.insert(output, info);
+                    if info.indexed {
+                        output_info.insert(output, info);
+                    }
                 }
 
                 let requests = output_info
@@ -371,7 +373,7 @@ impl Wallet {
                     rpc_url,
                     settings,
                     utxos,
-                    address: Some(wallet_address)
+                    address: Some(wallet_address),
                 })
             })
     }
@@ -385,9 +387,9 @@ impl Wallet {
 
         let output_json: api::Output = serde_json::from_str(&response.text().await?)?;
 
-        if !output_json.indexed {
-            bail!("output in wallet but not in ord server: {output}");
-        }
+        //  if !output_json.indexed {
+        //     bail!("output in wallet but not in ord server: {output}");
+        // }
 
         Ok(output_json)
     }
@@ -671,10 +673,22 @@ impl Wallet {
         )
     }
 
+    pub(crate) fn get_runes_balances_for_output2(
+        &self,
+        output: &OutPoint,
+    ) -> Result<&api::Output> {
+        Ok(
+            self
+                .output_info
+                .get(output)
+                .ok_or(anyhow!("output not found in wallet"))?
+        )
+    }
+
     pub(crate) fn get_output_info(
         &self,
     ) -> Iter<OutPoint, api::Output> {
-            self.output_info.iter().clone()
+        self.output_info.iter().clone()
     }
 
     // pub(crate) fn has_sat_index(&self) -> bool {
@@ -771,23 +785,23 @@ impl Wallet {
                 .get_transaction(&commit.txid(), Some(true))
                 .into_option()?;
 
-      if let Some(transaction) = transaction {
-        if u32::try_from(transaction.info.confirmations).unwrap()
-          >= Runestone::COMMIT_INTERVAL.into()
-        {
-          let tx_out = self
-            .bitcoin_client()
-            .get_tx_out(&commit.txid(), 0, Some(true))?;
+            if let Some(transaction) = transaction {
+                if u32::try_from(transaction.info.confirmations).unwrap() + 1
+                    >= Runestone::COMMIT_CONFIRMATIONS.into()
+                {
+                    let tx_out = self
+                        .bitcoin_client()
+                        .get_tx_out(&commit.txid(), 0, Some(true))?;
 
-          if let Some(tx_out) = tx_out {
-            if tx_out.confirmations >= Runestone::COMMIT_INTERVAL.into() {
-              break;
+                    if let Some(tx_out) = tx_out {
+                        if tx_out.confirmations + 1 >= Runestone::COMMIT_CONFIRMATIONS.into() {
+                            break;
+                        }
+                    } else {
+                        bail!("rune commitment spent, can't send reveal tx");
+                    }
+                }
             }
-          } else {
-            bail!("rune commitment spent, can't send reveal tx");
-          }
-        }
-      }
 
             if !self.integration_test() {
                 thread::sleep(Duration::from_secs(5));
@@ -1096,14 +1110,14 @@ impl Wallet {
         Ok(None)
     }
 
-  pub(crate) fn clear_etching(&self, rune: &Rune) -> Result {
-    // let wtx = self.database.begin_write()?;
-    //
-    // wtx.open_table(RUNE_TO_ETCHING)?.remove(rune.0)?;
-    // wtx.commit()?;
-    //
-    Ok(())
-  }
+    pub(crate) fn clear_etching(&self, rune: &Rune) -> Result {
+        // let wtx = self.database.begin_write()?;
+        //
+        // wtx.open_table(RUNE_TO_ETCHING)?.remove(rune.0)?;
+        // wtx.commit()?;
+        //
+        Ok(())
+    }
 
     pub(crate) fn pending_etchings(&self) -> Result<Vec<(Rune, EtchingEntry)>> {
         // let rtx = self.database.begin_read()?;

@@ -130,14 +130,15 @@ pub struct Output {
   pub spent: bool,
   pub transaction: String,
   pub value: u64,
+  pub script_pubkey_hex: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct RuneTransfer {
   pub rune_id: RuneId,
   pub amount: u128,
+  pub output: u32,
 }
-
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct RuneEtching {
   pub batch: String,
@@ -175,6 +176,7 @@ impl Output {
       runes,
       sat_ranges,
       script_pubkey: tx_out.script_pubkey.to_asm_string(),
+      script_pubkey_hex: Some(tx_out.script_pubkey.to_hex_string()),
       spent,
       transaction: outpoint.txid.to_string(),
       value: tx_out.value,
