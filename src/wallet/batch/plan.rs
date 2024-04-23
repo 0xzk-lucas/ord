@@ -191,6 +191,7 @@ impl Plan {
   ) -> Result<Output> {
     let Transactions {
       commit_tx,
+      commit_vout,
       reveal_tx,
       recovery_key_pair,
       total_fees,
