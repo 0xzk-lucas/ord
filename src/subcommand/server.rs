@@ -1,45 +1,44 @@
 use bitcoin::transaction;
 use {
-    self::{
-        accept_encoding::AcceptEncoding,
-        accept_json::AcceptJson,
-        error::{OptionExt, ServerError, ServerResult},
-    },
-    super::*,
-    crate::templates::{
-        BlockHtml, BlocksHtml, ChildrenHtml, ClockSvg, CollectionsHtml, HomeHtml, InputHtml,
-        InscriptionHtml, InscriptionsBlockHtml, InscriptionsHtml, OutputHtml, PageContent, PageHtml,
-        ParentsHtml, PreviewAudioHtml, PreviewCodeHtml, PreviewFontHtml, PreviewImageHtml,
-        PreviewMarkdownHtml, PreviewModelHtml, PreviewPdfHtml, PreviewTextHtml, PreviewUnknownHtml,
-        PreviewVideoHtml, RangeHtml, RareTxt, RuneBalancesHtml, RuneHtml, RunesHtml, SatHtml,
-        TransactionHtml,
-    },
-    axum::{
-        body,
-        extract::{Extension, Json, Path, Query},
-        http::{header, HeaderValue, StatusCode, Uri},
-        response::{IntoResponse, Redirect, Response},
-        routing::{get, post},
-        Router,
-    },
-    axum_server::Handle,
-    brotli::Decompressor,
-    rust_embed::RustEmbed,
-    rustls_acme::{
-        acme::{LETS_ENCRYPT_PRODUCTION_DIRECTORY, LETS_ENCRYPT_STAGING_DIRECTORY},
-        axum::AxumAcceptor,
-        caches::DirCache,
-        AcmeConfig,
-    },
-    std::{cmp::Ordering, str, sync::Arc},
-    tokio_stream::StreamExt,
-    tower_http::{
-        compression::CompressionLayer,
-        cors::{Any, CorsLayer},
-        set_header::SetResponseHeaderLayer,
-        validate_request::ValidateRequestHeaderLayer,
-    },
-    tempfile::TempDir
+  self::{
+    accept_encoding::AcceptEncoding,
+    accept_json::AcceptJson,
+    error::{OptionExt, ServerError, ServerResult},
+  },
+  super::*,
+  crate::templates::{
+    BlockHtml, BlocksHtml, ChildrenHtml, ClockSvg, CollectionsHtml, HomeHtml, InputHtml,
+    InscriptionHtml, InscriptionsBlockHtml, InscriptionsHtml, OutputHtml, PageContent, PageHtml,
+    ParentsHtml, PreviewAudioHtml, PreviewCodeHtml, PreviewFontHtml, PreviewImageHtml,
+    PreviewMarkdownHtml, PreviewModelHtml, PreviewPdfHtml, PreviewTextHtml, PreviewUnknownHtml,
+    PreviewVideoHtml, RangeHtml, RareTxt, RuneHtml, RunesHtml, SatHtml, TransactionHtml,
+  },
+  axum::{
+    body,
+    extract::{Extension, Json, Path, Query},
+    http::{header, HeaderValue, StatusCode, Uri},
+    response::{IntoResponse, Redirect, Response},
+    routing::{get, post},
+    Router,
+  },
+  axum_server::Handle,
+  brotli::Decompressor,
+  rust_embed::RustEmbed,
+  rustls_acme::{
+    acme::{LETS_ENCRYPT_PRODUCTION_DIRECTORY, LETS_ENCRYPT_STAGING_DIRECTORY},
+    axum::AxumAcceptor,
+    caches::DirCache,
+    AcmeConfig,
+  },
+  std::{cmp::Ordering, str, sync::Arc},
+  tokio_stream::StreamExt,
+  tower_http::{
+    compression::CompressionLayer,
+    cors::{Any, CorsLayer},
+    set_header::SetResponseHeaderLayer,
+    validate_request::ValidateRequestHeaderLayer,
+  },
+  tempfile::TempDir
 };
 
 pub(crate) use server_config::ServerConfig;
@@ -49,7 +48,7 @@ use crate::wallet::batch::Plan;
 mod accept_encoding;
 mod accept_json;
 mod error;
-pub(crate) mod query;
+pub mod query;
 mod server_config;
 
 enum SpawnConfig {
@@ -184,113 +183,113 @@ impl Server {
                 json_api_enabled: !self.disable_json_api,
             });
 
-            let router = Router::new()
-                .route("/", get(Self::home))
-                .route("/block/:query", get(Self::block))
-                .route("/blockcount", get(Self::block_count))
-                .route("/blockhash", get(Self::block_hash))
-                .route("/blockhash/:height", get(Self::block_hash_from_height))
-                .route("/blockheight", get(Self::block_height))
-                .route("/blocks", get(Self::blocks))
-                .route("/blocktime", get(Self::block_time))
-                .route("/bounties", get(Self::bounties))
-                .route("/children/:inscription_id", get(Self::children))
-                .route(
-                    "/children/:inscription_id/:page",
-                    get(Self::children_paginated),
-                )
-                .route("/clock", get(Self::clock))
-                .route("/collections", get(Self::collections))
-                .route("/collections/:page", get(Self::collections_paginated))
-                .route("/content/:inscription_id", get(Self::content))
-                .route("/faq", get(Self::faq))
-                .route("/favicon.ico", get(Self::favicon))
-                .route("/feed.xml", get(Self::feed))
-                .route("/input/:block/:transaction/:input", get(Self::input))
-                .route("/inscription/:inscription_query", get(Self::inscription))
-                .route("/inscriptions", get(Self::inscriptions))
-                .route("/inscriptions", post(Self::inscriptions_json))
-                .route("/inscriptions/:page", get(Self::inscriptions_paginated))
-                .route(
-                    "/inscriptions/block/:height",
-                    get(Self::inscriptions_in_block),
-                )
-                .route(
-                    "/inscriptions/block/:height/:page",
-                    get(Self::inscriptions_in_block_paginated),
-                )
-                .route("/install.sh", get(Self::install_script))
-                .route("/ordinal/:sat", get(Self::ordinal))
-                .route("/output/:output", get(Self::output))
-                .route("/outputs", post(Self::outputs))
-                .route("/parents/:inscription_id", get(Self::parents))
-                .route(
-                    "/parents/:inscription_id/:page",
-                    get(Self::parents_paginated),
-                )
-                .route("/preview/:inscription_id", get(Self::preview))
-                .route("/r/blockhash", get(Self::block_hash_json))
-                .route(
-                    "/r/blockhash/:height",
-                    get(Self::block_hash_from_height_json),
-                )
-                .route("/r/blockheight", get(Self::block_height))
-                .route("/r/blocktime", get(Self::block_time))
-                .route("/r/blockinfo/:query", get(Self::block_info))
-                .route(
-                    "/r/inscription/:inscription_id",
-                    get(Self::inscription_recursive),
-                )
-                .route("/r/children/:inscription_id", get(Self::children_recursive))
-                .route(
-                    "/r/children/:inscription_id/:page",
-                    get(Self::children_recursive_paginated),
-                )
-                .route("/r/metadata/:inscription_id", get(Self::metadata))
-                .route("/r/sat/:sat_number", get(Self::sat_inscriptions))
-                .route(
-                    "/r/sat/:sat_number/:page",
-                    get(Self::sat_inscriptions_paginated),
-                )
-                .route(
-                    "/r/sat/:sat_number/at/:index",
-                    get(Self::sat_inscription_at_index),
-                )
-                .route("/range/:start/:end", get(Self::range))
-                .route("/rare.txt", get(Self::rare_txt))
-                .route("/rune/:rune", get(Self::rune))
-                .route("/runes", get(Self::runes))
-                .route("/runes/balances", get(Self::runes_balances))
-                .route("/runes/transfer", post(Self::rune_encipher))
-                // .route("/runes/batch", post(Self::rune_batch))
-                .route("/sat/:sat", get(Self::sat))
-                .route("/search", get(Self::search_by_query))
-                .route("/search/*query", get(Self::search_by_path))
-                .route("/static/*path", get(Self::static_asset))
-                .route("/status", get(Self::status))
-                .route("/tx/:txid", get(Self::transaction))
-                .route("/wallet/:wallet_address/runes", get(Self::wallet_runes))
-                .route("/wallet/:wallet_address/btc-utxos", get(Self::wallet_btc_utxos))
-                .route("/update", get(Self::update))
-                .fallback(Self::fallback)
-                .layer(Extension(index))
-                .layer(Extension(server_config.clone()))
-                .layer(Extension(settings.clone()))
-                .layer(SetResponseHeaderLayer::if_not_present(
-                    header::CONTENT_SECURITY_POLICY,
-                    HeaderValue::from_static("default-src 'self'"),
-                ))
-                .layer(SetResponseHeaderLayer::overriding(
-                    header::STRICT_TRANSPORT_SECURITY,
-                    HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
-                ))
-                .layer(
-                    CorsLayer::new()
-                        .allow_methods([http::Method::GET])
-                        .allow_origin(Any),
-                )
-                .layer(CompressionLayer::new())
-                .with_state(server_config);
+      let router = Router::new()
+        .route("/", get(Self::home))
+        .route("/block/:query", get(Self::block))
+        .route("/blockcount", get(Self::block_count))
+        .route("/blockhash", get(Self::block_hash))
+        .route("/blockhash/:height", get(Self::block_hash_from_height))
+        .route("/blockheight", get(Self::block_height))
+        .route("/blocks", get(Self::blocks))
+        .route("/blocktime", get(Self::block_time))
+        .route("/bounties", get(Self::bounties))
+        .route("/children/:inscription_id", get(Self::children))
+        .route(
+          "/children/:inscription_id/:page",
+          get(Self::children_paginated),
+        )
+        .route("/clock", get(Self::clock))
+        .route("/collections", get(Self::collections))
+        .route("/collections/:page", get(Self::collections_paginated))
+        .route("/content/:inscription_id", get(Self::content))
+        .route("/faq", get(Self::faq))
+        .route("/favicon.ico", get(Self::favicon))
+        .route("/feed.xml", get(Self::feed))
+        .route("/input/:block/:transaction/:input", get(Self::input))
+        .route("/inscription/:inscription_query", get(Self::inscription))
+        .route("/inscriptions", get(Self::inscriptions))
+        .route("/inscriptions", post(Self::inscriptions_json))
+        .route("/inscriptions/:page", get(Self::inscriptions_paginated))
+        .route(
+          "/inscriptions/block/:height",
+          get(Self::inscriptions_in_block),
+        )
+        .route(
+          "/inscriptions/block/:height/:page",
+          get(Self::inscriptions_in_block_paginated),
+        )
+        .route("/install.sh", get(Self::install_script))
+        .route("/ordinal/:sat", get(Self::ordinal))
+        .route("/output/:output", get(Self::output))
+        .route("/outputs", post(Self::outputs))
+        .route("/parents/:inscription_id", get(Self::parents))
+        .route(
+          "/parents/:inscription_id/:page",
+          get(Self::parents_paginated),
+        )
+        .route("/preview/:inscription_id", get(Self::preview))
+        .route("/r/blockhash", get(Self::block_hash_json))
+        .route(
+          "/r/blockhash/:height",
+          get(Self::block_hash_from_height_json),
+        )
+        .route("/r/blockheight", get(Self::block_height))
+        .route("/r/blocktime", get(Self::block_time))
+        .route("/r/blockinfo/:query", get(Self::block_info))
+        .route(
+          "/r/inscription/:inscription_id",
+          get(Self::inscription_recursive),
+        )
+        .route("/r/children/:inscription_id", get(Self::children_recursive))
+        .route(
+          "/r/children/:inscription_id/:page",
+          get(Self::children_recursive_paginated),
+        )
+        .route("/r/metadata/:inscription_id", get(Self::metadata))
+        .route("/r/sat/:sat_number", get(Self::sat_inscriptions))
+        .route(
+          "/r/sat/:sat_number/:page",
+          get(Self::sat_inscriptions_paginated),
+        )
+        .route(
+          "/r/sat/:sat_number/at/:index",
+          get(Self::sat_inscription_at_index),
+        )
+        .route("/range/:start/:end", get(Self::range))
+        .route("/rare.txt", get(Self::rare_txt))
+        .route("/rune/:rune", get(Self::rune))
+        .route("/runes", get(Self::runes))
+          .route("/runes/:page", get(Self::runes_paginated))
+          .route("/runes/balances", get(Self::runes_balances))
+          .route("/runes/transfer", post(Self::rune_encipher))
+        .route("/sat/:sat", get(Self::sat))
+        .route("/search", get(Self::search_by_query))
+        .route("/search/*query", get(Self::search_by_path))
+        .route("/static/*path", get(Self::static_asset))
+        .route("/status", get(Self::status))
+        .route("/tx/:txid", get(Self::transaction))
+          .route("/wallet/:wallet_address/runes", get(Self::wallet_runes))
+          .route("/wallet/:wallet_address/btc-utxos", get(Self::wallet_btc_utxos))
+        .route("/update", get(Self::update))
+        .fallback(Self::fallback)
+        .layer(Extension(index))
+        .layer(Extension(server_config.clone()))
+        .layer(Extension(settings.clone()))
+        .layer(SetResponseHeaderLayer::if_not_present(
+          header::CONTENT_SECURITY_POLICY,
+          HeaderValue::from_static("default-src 'self'"),
+        ))
+        .layer(SetResponseHeaderLayer::overriding(
+          header::STRICT_TRANSPORT_SECURITY,
+          HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
+        ))
+        .layer(
+          CorsLayer::new()
+            .allow_methods([http::Method::GET])
+            .allow_origin(Any),
+        )
+        .layer(CompressionLayer::new())
+        .with_state(server_config);
 
             let router = if let Some((username, password)) = settings.credentials() {
                 router.layer(ValidateRequestHeaderLayer::basic(username, password))
@@ -663,12 +662,15 @@ impl Server {
                 ));
             }
 
-            let rune = match rune_query {
-                query::Rune::SpacedRune(spaced_rune) => spaced_rune.rune,
-                query::Rune::RuneId(rune_id) => index
-                    .get_rune_by_id(rune_id)?
-                    .ok_or_not_found(|| format!("rune {rune_id}"))?,
-            };
+      let rune = match rune_query {
+        query::Rune::Spaced(spaced_rune) => spaced_rune.rune,
+        query::Rune::Id(rune_id) => index
+          .get_rune_by_id(rune_id)?
+          .ok_or_not_found(|| format!("rune {rune_id}"))?,
+        query::Rune::Number(number) => index
+          .get_rune_by_number(usize::try_from(number).unwrap())?
+          .ok_or_not_found(|| format!("rune number {number}"))?,
+      };
 
             let (id, entry, parent) = index
                 .rune(rune)?
@@ -699,57 +701,81 @@ impl Server {
         })
     }
 
-    async fn runes(
-        Extension(server_config): Extension<Arc<ServerConfig>>,
-        Extension(index): Extension<Arc<Index>>,
-        AcceptJson(accept_json): AcceptJson,
-    ) -> ServerResult {
-        task::block_in_place(|| {
-            Ok(if accept_json {
-                Json(api::Runes {
-                    entries: index.runes()?,
-                })
-                    .into_response()
-            } else {
-                RunesHtml {
-                    entries: index.runes()?,
-                }
-                    .page(server_config)
-                    .into_response()
-            })
-        })
-    }
+  async fn runes(
+    Extension(server_config): Extension<Arc<ServerConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+    accept_json: AcceptJson,
+  ) -> ServerResult<Response> {
+    Self::runes_paginated(
+      Extension(server_config),
+      Extension(index),
+      Path(0),
+      accept_json,
+    )
+    .await
+  }
 
-    async fn runes_balances(
-        Extension(server_config): Extension<Arc<ServerConfig>>,
-        Extension(index): Extension<Arc<Index>>,
-        AcceptJson(accept_json): AcceptJson,
-    ) -> ServerResult {
-        task::block_in_place(|| {
-            let balances = index.get_rune_balance_map()?;
-            Ok(if accept_json {
-                Json(
-                    balances
-                        .into_iter()
-                        .map(|(rune, balances)| {
-                            (
-                                rune,
-                                balances
-                                    .into_iter()
-                                    .map(|(outpoint, pile)| (outpoint, pile.amount))
-                                    .collect(),
-                            )
-                        })
-                        .collect::<BTreeMap<SpacedRune, BTreeMap<OutPoint, u128>>>(),
-                )
-                    .into_response()
-            } else {
-                RuneBalancesHtml { balances }
-                    .page(server_config)
-                    .into_response()
-            })
+  async fn runes_paginated(
+    Extension(server_config): Extension<Arc<ServerConfig>>,
+    Extension(index): Extension<Arc<Index>>,
+    Path(page_index): Path<usize>,
+    AcceptJson(accept_json): AcceptJson,
+  ) -> ServerResult {
+    task::block_in_place(|| {
+      let (entries, more) = index.runes_paginated(50, page_index)?;
+
+      let prev = page_index.checked_sub(1);
+
+      let next = more.then_some(page_index + 1);
+
+      Ok(if accept_json {
+        Json(RunesHtml {
+          entries,
+          more,
+          prev,
+          next,
         })
-    }
+        .into_response()
+      } else {
+        RunesHtml {
+          entries,
+          more,
+          prev,
+          next,
+        }
+        .page(server_config)
+        .into_response()
+      })
+    })
+  }
+
+  async fn runes_balances(
+    Extension(index): Extension<Arc<Index>>,
+    AcceptJson(accept_json): AcceptJson,
+  ) -> ServerResult {
+    task::block_in_place(|| {
+      Ok(if accept_json {
+        Json(
+          index
+            .get_rune_balance_map()?
+            .into_iter()
+            .map(|(rune, balances)| {
+              (
+                rune,
+                balances
+                  .into_iter()
+                  .map(|(outpoint, pile)| (outpoint, pile.amount))
+                  .collect(),
+              )
+            })
+            .collect::<BTreeMap<SpacedRune, BTreeMap<OutPoint, u128>>>(),
+        )
+        .into_response()
+      } else {
+        StatusCode::NOT_FOUND.into_response()
+      })
+    })
+  }
 
     async fn home(
         Extension(server_config): Extension<Arc<ServerConfig>>,
@@ -822,30 +848,33 @@ impl Server {
                 }
             };
 
-            Ok(if accept_json {
-                let inscriptions = index.get_inscriptions_in_block(height)?;
-                Json(api::Block::new(
-                    block,
-                    Height(height),
-                    Self::index_height(&index)?,
-                    inscriptions,
-                ))
-                    .into_response()
-            } else {
-                let (featured_inscriptions, total_num) =
-                    index.get_highest_paying_inscriptions_in_block(height, 8)?;
-                BlockHtml::new(
-                    block,
-                    Height(height),
-                    Self::index_height(&index)?,
-                    total_num,
-                    featured_inscriptions,
-                )
-                    .page(server_config)
-                    .into_response()
-            })
-        })
-    }
+      let runes = index.get_runes_in_block(u64::from(height))?;
+      Ok(if accept_json {
+        let inscriptions = index.get_inscriptions_in_block(height)?;
+        Json(api::Block::new(
+          block,
+          Height(height),
+          Self::index_height(&index)?,
+          inscriptions,
+          runes,
+        ))
+        .into_response()
+      } else {
+        let (featured_inscriptions, total_num) =
+          index.get_highest_paying_inscriptions_in_block(height, 8)?;
+        BlockHtml::new(
+          block,
+          Height(height),
+          Self::index_height(&index)?,
+          total_num,
+          featured_inscriptions,
+          runes,
+        )
+        .page(server_config)
+        .into_response()
+      })
+    })
+  }
 
     async fn transaction(
         Extension(server_config): Extension<Arc<ServerConfig>>,
@@ -2861,9 +2890,17 @@ mod tests {
         );
     }
 
-    #[test]
-    fn fallback() {
-        let server = TestServer::new();
+  #[test]
+  fn html_runes_balances_not_found() {
+    TestServer::builder()
+      .chain(Chain::Regtest)
+      .build()
+      .assert_response("/runes/balances", StatusCode::NOT_FOUND, "");
+  }
+
+  #[test]
+  fn fallback() {
+    let server = TestServer::new();
 
         server.assert_redirect("/0", "/inscription/0");
         server.assert_redirect("/0/", "/inscription/0");
@@ -2938,6 +2975,60 @@ mod tests {
     );
   }
 
+  #[test]
+  fn runes_can_be_queried_by_rune_number() {
+    let server = TestServer::builder()
+      .chain(Chain::Regtest)
+      .index_runes()
+      .build();
+
+    server.mine_blocks(1);
+
+    server.assert_response_regex("/rune/0", StatusCode::NOT_FOUND, ".*");
+
+    for i in 0..10 {
+      let rune = Rune(RUNE + i);
+      server.etch(
+        Runestone {
+          edicts: vec![Edict {
+            id: RuneId::default(),
+            amount: u128::MAX,
+            output: 0,
+          }],
+          etching: Some(Etching {
+            rune: Some(rune),
+            ..default()
+          }),
+          ..default()
+        },
+        1,
+        None,
+      );
+
+      server.mine_blocks(1);
+    }
+
+    server.assert_response_regex(
+      "/rune/0",
+      StatusCode::OK,
+      ".*<title>Rune AAAAAAAAAAAAA</title>.*",
+    );
+
+    for i in 1..6 {
+      server.assert_response_regex(
+        format!("/rune/{}", i),
+        StatusCode::OK,
+        ".*<title>Rune AAAAAAAAAAAA.*</title>.*",
+      );
+    }
+
+    server.assert_response_regex(
+      "/rune/9",
+      StatusCode::OK,
+      ".*<title>Rune AAAAAAAAAAAAJ</title>.*",
+    );
+  }
+
     #[test]
     fn runes_are_displayed_on_runes_page() {
         let server = TestServer::builder()
@@ -2947,11 +3038,11 @@ mod tests {
 
         server.mine_blocks(1);
 
-        server.assert_response_regex(
-            "/runes",
-            StatusCode::OK,
-            ".*<title>Runes</title>.*<h1>Runes</h1>\n<ul>\n</ul>.*",
-        );
+    server.assert_response_regex(
+      "/runes",
+      StatusCode::OK,
+      ".*<title>Runes</title>.*<h1>Runes</h1>\n<ul>\n</ul>\n<div class=center>\n    prev\n      next\n  </div>.*",
+    );
 
         let (txid, id) = server.etch(
             Runestone {
@@ -3094,6 +3185,8 @@ mod tests {
   <dd>340282366920938463463374607431768211455\u{A0}%</dd>
   <dt>premine</dt>
   <dd>340282366920938463463374607431768211455\u{A0}%</dd>
+  <dt>premine percentage</dt>
+  <dd>100%</dd>
   <dt>burned</dt>
   <dd>0\u{A0}%</dd>
   <dt>divisibility</dt>
@@ -3119,17 +3212,63 @@ mod tests {
   .*
   <dt>rune</dt>
   <dd><a href=/rune/AAAAAAAAAAAAA>AAAAAAAAAAAAA</a></dd>
+  .*
 </dl>
 .*",
         );
     }
 
-    #[test]
-    fn runes_are_spaced() {
-        let server = TestServer::builder()
-            .chain(Chain::Regtest)
-            .index_runes()
-            .build();
+  #[test]
+  fn etched_runes_are_displayed_on_block_page() {
+    let server = TestServer::builder()
+      .chain(Chain::Regtest)
+      .index_runes()
+      .build();
+
+    server.mine_blocks(1);
+
+    let rune0 = Rune(RUNE);
+
+    let (_txid, id) = server.etch(
+      Runestone {
+        edicts: vec![Edict {
+          id: RuneId::default(),
+          amount: u128::MAX,
+          output: 0,
+        }],
+        etching: Some(Etching {
+          rune: Some(rune0),
+          ..default()
+        }),
+        ..default()
+      },
+      1,
+      None,
+    );
+
+    assert_eq!(
+      server.index.get_runes_in_block(id.block - 1).unwrap().len(),
+      0
+    );
+    assert_eq!(server.index.get_runes_in_block(id.block).unwrap().len(), 1);
+    assert_eq!(
+      server.index.get_runes_in_block(id.block + 1).unwrap().len(),
+      0
+    );
+
+    server.assert_response_regex(
+      format!("/block/{}", id.block),
+      StatusCode::OK,
+      format!(".*<h2>1 Rune</h2>.*<li><a href=/rune/{rune0}>{rune0}</a></li>.*"),
+    );
+  }
+
+  #[test]
+  fn runes_are_spaced() {
+    let server = TestServer::builder()
+      .chain(Chain::Regtest)
+      .index_runes()
+      .build();
 
         server.mine_blocks(1);
 
